@@ -5,15 +5,74 @@ jobs:
   runs-on: ubuntu-latest
   steps:
    - uses: actions/checkout@v4
+     with: {fetch-depth: 0}
+
+   - name: Extract latest source zip if project isn't already unpacked
+     run: |
+       SETTINGS_FILE=$(find "$GITHUB_WORKSPACE" -maxdepth 4 -name "settings.gradle" -o -maxdepth 4 -name "settings.gradle.kts" | head -n 1)
+       if [ -n "$SETTINGS_FILE" ]; then
+         echo "Project already unpacked, found: $SETTINGS_FILE"
+         exit 0
+       fi
+
+       echo "No settings.gradle in repo root yet — looking for the most recently committed zip."
+       ZIP_FILE=""
+       LATEST_TS=0
+       for z in "$GITHUB_WORKSPACE"/*.zip; do
+         [ -e "$z" ] || continue
+         TS=$(git -C "$GITHUB_WORKSPACE" log -1 --format=%ct -- "$z")
+         if [ -n "$TS" ] && [ "$TS" -gt "$LATEST_TS" ]; then
+           LATEST_TS=$TS
+           ZIP_FILE=$z
+         fi
+       done
+
+       if [ -z "$ZIP_FILE" ]; then
+         echo "No zip file found in repo root. Full repo listing:"
+         find "$GITHUB_WORKSPACE" -maxdepth 4
+         exit 1
+       fi
+
+       echo "Most recently committed zip: $ZIP_FILE (committed $(date -d @$LATEST_TS))"
+       mkdir -p "$GITHUB_WORKSPACE/_unzipped"
+       unzip -q "$ZIP_FILE" -d "$GITHUB_WORKSPACE/_unzipped"
+
+   - name: Find Gradle project root
+     id: find
+     run: |
+       SETTINGS_FILE=$(find "$GITHUB_WORKSPACE" -maxdepth 6 -name "settings.gradle" -o -maxdepth 6 -name "settings.gradle.kts" | head -n 1)
+       if [ -z "$SETTINGS_FILE" ]; then
+         echo "Still no settings.gradle found after extraction. Full repo listing:"
+         find "$GITHUB_WORKSPACE" -maxdepth 6
+         exit 1
+       fi
+       PROJECT_DIR=$(dirname "$SETTINGS_FILE")
+       echo "Found settings.gradle at: $SETTINGS_FILE"
+       echo "dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+
    - uses: actions/setup-java@v4
      with: {distribution: temurin, java-version: '17'}
    - uses: android-actions/setup-android@v4
      with: {packages: 'platform-tools platforms;android-35 build-tools;35.0.0'}
    - uses: gradle/actions/setup-gradle@v4
      with: {gradle-version: '8.9'}
+
    - name: Build APK
+     working-directory: ${{ steps.find.outputs.dir }}
      run: gradle --no-daemon :app:assembleDebug
+
+   - name: Locate built APK
+     id: apk
+     run: |
+       APK_PATH=$(find "$GITHUB_WORKSPACE" -name "app-debug.apk" -path "*/outputs/apk/debug/*" | head -n 1)
+       if [ -z "$APK_PATH" ]; then
+         echo "No app-debug.apk found after build."
+         exit 1
+       fi
+       echo "Found APK at: $APK_PATH"
+       echo "path=$APK_PATH" >> "$GITHUB_OUTPUT"
+
    - uses: actions/upload-artifact@v4
      with:
       name: AsterionLink-5.1-APK
-      path: app/build/outputs/apk/debug/app-debug.apk
+      path: ${{ steps.apk.outputs.path }}
