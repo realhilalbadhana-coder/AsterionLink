@@ -1,4 +1,4 @@
-name: Build Asterion APK
+name: Build Asterion Link v3
 
 on:
   workflow_dispatch:
@@ -8,40 +8,43 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract Asterion project
+      - name: Extract v3 project
         run: |
-          mkdir project
-          unzip -q AsterionLink_v0.1.zip -d project
+          unzip -o AsterionLink_v3_FreshUI.zip
+          cd AsterionLink
+          echo "PROJECT_DIR=$PWD" >> $GITHUB_ENV
 
-      - name: Locate Android project
-        run: |
-          PROJECT_DIR=$(find project -name settings.gradle.kts -printf '%h\n' | head -1)
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-          echo "Android project found at: $PROJECT_DIR"
-
-      - name: Set up Java 17
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Gradle 9.6.0
+      - name: Set up Android
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK
+        run: |
+          sdkmanager "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '9.6.0'
+          gradle-version: '8.9'
 
-      - name: Build Asterion APK
-        working-directory: ${{ env.PROJECT_DIR }}
+      - name: Build APK
         run: |
-          gradle --version
-          gradle assembleDebug --stacktrace --no-daemon
+          cd "$PROJECT_DIR"
+          gradle --no-daemon :app:assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: AsterionLink-APK
-          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+          name: AsterionLink-v3-APK
+          path: AsterionLink/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
