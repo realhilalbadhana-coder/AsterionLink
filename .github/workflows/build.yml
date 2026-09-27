@@ -1,4 +1,4 @@
-name: Build Asterion Link
+name: Build Asterion Link 5.0
 
 on:
   workflow_dispatch:
@@ -8,6 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -27,39 +28,86 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Find Android project
+      - name: Find and extract 5.0 project
+        shell: bash
         run: |
-          echo "Searching for Gradle project..."
-          find . -maxdepth 4 \
-            \( -name "settings.gradle" -o -name "settings.gradle.kts" \) \
-            -print
+          set -e
 
-      - name: Build APK
-        run: |
-          PROJECT_DIR=$(find . -maxdepth 4 \
-            \( -name "settings.gradle" -o -name "settings.gradle.kts" \) \
-            -print -quit | xargs dirname)
+          echo "=== Repository files ==="
+          find . -maxdepth 2 -type f -print
 
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "ERROR: Android Gradle project not found."
+          ZIP_FILE=$(find . -maxdepth 2 -type f -iname "*.zip" \
+            ! -name "AsterionLink_v0.1.zip" \
+            ! -name "AsterionLink_v3_FreshUI.zip" \
+            ! -name "AsterionLink_v3_FIXED.zip" \
+            | head -n 1)
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ERROR: No new Asterion Link ZIP found."
             exit 1
           fi
 
-          echo "Using project: $PROJECT_DIR"
+          echo "Using ZIP:"
+          echo "$ZIP_FILE"
+
+          mkdir -p extracted
+          unzip -o "$ZIP_FILE" -d extracted
+
+          echo "=== Extracted files ==="
+          find extracted -maxdepth 5 \
+            \( -name "settings.gradle" \
+            -o -name "settings.gradle.kts" \
+            -o -name "build.gradle" \
+            -o -name "build.gradle.kts" \) \
+            -print
+
+      - name: Locate Android project
+        shell: bash
+        run: |
+          set -e
+
+          PROJECT_DIR=$(find extracted -type f \
+            \( -name "settings.gradle" -o -name "settings.gradle.kts" \) \
+            -print -quit)
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: settings.gradle not found."
+            echo "The ZIP does not appear to contain a Gradle Android project."
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$PROJECT_DIR")
+
+          echo "Android project found:"
+          echo "$PROJECT_DIR"
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+      - name: Build Asterion Link 5.0
+        shell: bash
+        run: |
+          set -e
 
           cd "$PROJECT_DIR"
 
+          echo "Building from:"
+          pwd
+
+          echo "=== Project files ==="
+          ls -la
+
           gradle --no-daemon :app:assembleDebug
 
-      - name: Show APK
+      - name: Find APK
+        shell: bash
         run: |
-          echo "APK files:"
+          echo "=== APK files ==="
           find . -type f -name "*.apk" -print
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Asterion-Link-APK
+          name: Asterion-Link-5.0-APK
           path: '**/app/build/outputs/apk/debug/*.apk'
           if-no-files-found: error
           retention-days: 14
