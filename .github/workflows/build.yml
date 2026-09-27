@@ -11,9 +11,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract v3 project
+      - name: Extract fixed v3 project
         run: |
-          unzip -o AsterionLink_v3_FreshUI.zip
+          unzip -o AsterionLink_v3_FIXED.zip
+          echo "Project extracted:"
           ls -la
           ls -la AsterionLink
 
