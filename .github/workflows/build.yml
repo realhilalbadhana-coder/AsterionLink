@@ -8,10 +8,44 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract Asterion Link v3
+      - name: Extract v3 project
         run: |
           unzip -o AsterionLink_v3_FreshUI.zip
-          echo "PROJECT_DIR=$GITHUB_WORK
+          ls -la
+          ls -la AsterionLink
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Accept Android SDK licenses
+        run: |
+          yes | sdkmanager --licenses || true
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager "platform-tools"
+          sdkmanager "platforms;android-35"
+          sdkmanager "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build APK
+        working-directory: AsterionLink
+        run: |
+          gradle --no-daemon :app:assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AsterionLink-v3-APK
+          path: AsterionLink/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
