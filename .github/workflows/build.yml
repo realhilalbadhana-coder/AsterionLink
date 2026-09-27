@@ -11,40 +11,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Extract v3 project
+      - name: Extract Asterion Link v3
         run: |
           unzip -o AsterionLink_v3_FreshUI.zip
-          cd AsterionLink
-          echo "PROJECT_DIR=$PWD" >> $GITHUB_ENV
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Android
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK
-        run: |
-          sdkmanager "platform-tools" \
-            "platforms;android-35" \
-            "build-tools;35.0.0"
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-
-      - name: Build APK
-        run: |
-          cd "$PROJECT_DIR"
-          gradle --no-daemon :app:assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: AsterionLink-v3-APK
-          path: AsterionLink/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 14
+          echo "PROJECT_DIR=$GITHUB_WORK
