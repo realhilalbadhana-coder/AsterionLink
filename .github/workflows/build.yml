@@ -1,54 +1,20 @@
-name: Build Asterion Link 5.0
-
-on:
-  workflow_dispatch:
-
+name: Build Asterion Link 5
+on: workflow_dispatch
 jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v4
-        with:
-          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
-
-      - name: Extract EXACT 5.0 source
-        run: |
-          set -e
-
-          echo "Repository ZIP files:"
-          find . -maxdepth 2 -type f -iname "*.zip" -print
-
-          unzip -o AsterionLink_5_FRESH_SOURCE.zip
-
-          echo "Checking 5.0 source..."
-          grep -n "ServerSocket" AsterionLink/app/src/main/java/com/asterion/link/MainActivity.java
-          grep -n "photoBox" AsterionLink/app/src/main/java/com/asterion/link/MainActivity.java || true
-
-      - name: Build APK
-        working-directory: AsterionLink
-        run: |
-          gradle --no-daemon :app:assembleDebug --stacktrace
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: Asterion-Link-5.0-APK
-          path: AsterionLink/app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-          retention-days: 14
+ build:
+  runs-on: ubuntu-latest
+  steps:
+   - uses: actions/checkout@v4
+   - uses: actions/setup-java@v4
+     with: {distribution: temurin, java-version: '17'}
+   - uses: android-actions/setup-android@v4
+     with: {packages: 'platform-tools platforms;android-35 build-tools;35.0.0'}
+   - uses: gradle/actions/setup-gradle@v4
+     with: {gradle-version: '8.9'}
+   - name: Build APK
+     working-directory: AsterionLink
+     run: gradle --no-daemon :app:assembleDebug
+   - uses: actions/upload-artifact@v4
+     with:
+      name: AsterionLink-5.1-APK
+      path: AsterionLink/app/build/outputs/apk/debug/app-debug.apk
