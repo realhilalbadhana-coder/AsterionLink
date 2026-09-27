@@ -1,4 +1,4 @@
-name: Build Asterion Link v3
+name: Build Asterion Link
 
 on:
   workflow_dispatch:
@@ -8,40 +8,70 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
+      # 1. Download repository
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Extract fixed v3 project
-        run: |
-          unzip -o AsterionLink_v3_FIXED.zip
-          echo "Project extracted:"
-          ls -la
-          ls -la AsterionLink
-
+      # 2. Java 17
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
+      # 3. Android SDK
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
-          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+          packages: |
+            platform-tools
+            platforms;android-35
+            build-tools;35.0.0
 
+      # 4. Gradle
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Build APK
-        working-directory: AsterionLink
+      # 5. Find project
+      - name: Check project
         run: |
+          echo "Repository:"
+          ls -la
+          echo ""
+          echo "Searching for Gradle project..."
+          find . -maxdepth 3 -name "settings.gradle" -o -name "settings.gradle.kts"
+
+      # 6. Build APK
+      - name: Build Debug APK
+        run: |
+          PROJECT_DIR=$(find . -maxdepth 3 -name "settings.gradle" -o -name "settings.gradle.kts" | head -n 1 | xargs dirname)
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "ERROR: Gradle project not found."
+            exit 1
+          fi
+
+          echo "Gradle project found at: $PROJECT_DIR"
+
+          cd "$PROJECT_DIR"
+
           gradle --no-daemon :app:assembleDebug
 
-      - name: Upload APK
+      # 7. Find APK
+      - name: Locate APK
+        run: |
+          echo "Searching for APK..."
+          find . -type f -name "*.apk" -print
+
+      # 8. Upload APK
+      - name: Upload Asterion Link APK
         uses: actions/upload-artifact@v4
         with:
-          name: AsterionLink-v3-APK
-          path: AsterionLink/app/build/outputs/apk/debug/app-debug.apk
+          name: Asterion-Link-APK
+          path: |
+            **/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
           retention-days: 14
